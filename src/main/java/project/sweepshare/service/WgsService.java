@@ -8,6 +8,7 @@ import project.sweepshare.database.model.UsersEntity;
 import project.sweepshare.database.model.WgsEntity;
 import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.database.repository.IWgsRepository;
+import project.sweepshare.dto.AddMemberRequestDTO;
 import project.sweepshare.dto.WgsRequestDTO;
 import project.sweepshare.dto.WgsResponseDTO;
 import project.sweepshare.mapper.IWgsMapper;
@@ -90,6 +91,28 @@ public class WgsService {
         if(usersRepository.countByWg(wg) == 0) {
             wgsRepository.delete(wg);
         }
+    }
+
+    @Transactional
+    public void addMemberByEmail(String creatorEmail, AddMemberRequestDTO dto){
+        String  email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UsersEntity  creator = usersRepository.findByEmail(creatorEmail)
+                .orElseThrow(() -> new RuntimeException("Not found"));
+
+        WgsEntity wg = creator.getWg();
+        if (wg == null) {
+            throw new RuntimeException("You must belong to a WG to invite other members");
+        }
+
+        UsersEntity targetUser = usersRepository.findByEmail(dto.email())
+                .orElseThrow(() -> new RuntimeException("No user found with the provided email"));
+
+        if (targetUser.getWg() != null) {
+            throw new RuntimeException("The user is already a member of a WG");
+        }
+
+        targetUser.setWg(wg);
+        usersRepository.save(targetUser);
     }
 
 }

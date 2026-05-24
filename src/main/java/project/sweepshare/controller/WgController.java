@@ -5,9 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import project.sweepshare.dto.AddMemberRequestDTO;
 import project.sweepshare.dto.WgsRequestDTO;
 import project.sweepshare.dto.WgsResponseDTO;
+import project.sweepshare.service.RoomRotationService;
 import project.sweepshare.service.WgsService;
+
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/v1/wgs")
@@ -15,6 +19,7 @@ import project.sweepshare.service.WgsService;
 @Validated
 public class WgController {
     private final WgsService wgsService;
+    private final RoomRotationService roomRotationService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -32,5 +37,20 @@ public class WgController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leaveWg(@PathVariable Long id){
         wgsService.leaveWg(id);
+    }
+
+    @PostMapping("/add-member")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void addMember(@Valid @RequestBody AddMemberRequestDTO dto, Principal principal){
+        String loggedUserEmail = principal.getName();
+
+        wgsService.addMemberByEmail(loggedUserEmail, dto);
+    }
+
+    @PostMapping("/{id}/rotate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forceRoomRotation(@PathVariable Long id, Principal principal){
+        String loggedUserEmail = principal.getName();
+        roomRotationService.forceRotation(id,loggedUserEmail);
     }
 }

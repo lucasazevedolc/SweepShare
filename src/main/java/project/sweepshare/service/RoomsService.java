@@ -1,12 +1,13 @@
 package project.sweepshare.service;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.sweepshare.database.model.RoomsAssignmentsEntity;
 import project.sweepshare.database.model.RoomsEntity;
 import project.sweepshare.database.model.UsersEntity;
+import project.sweepshare.database.repository.IRoomsAssignmentsRepository;
 import project.sweepshare.database.repository.IRoomsRepository;
 import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.RoomsRequestDTO;
@@ -14,7 +15,6 @@ import project.sweepshare.dto.RoomsResponseDTO;
 import project.sweepshare.mapper.IRoomsMapper;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +22,9 @@ public class RoomsService {
 
     private final IRoomsRepository roomsRepository;
     private final IUsersRepository usersRepository;
+    private final IRoomsAssignmentsRepository assignmentsRepository;
     private final IRoomsMapper roomsMapper;
+    private final RoomRotationService roomRotationService;
 
     @Transactional
     public RoomsResponseDTO create(RoomsRequestDTO dto) {
@@ -46,6 +48,16 @@ public class RoomsService {
         }
 
         RoomsEntity savedRoom = roomsRepository.save(room);
+
+        RoomsAssignmentsEntity assignment = RoomsAssignmentsEntity.builder()
+                .room(room)
+                .user(user)
+                .build();
+
+        assignmentsRepository.save(assignment);
+
+        roomRotationService.rotateSingleWg(room.getWg());
+
         return roomsMapper.toResponseDTO(savedRoom);
 
         }

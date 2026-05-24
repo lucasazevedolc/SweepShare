@@ -5,7 +5,7 @@ import lombok.Getter;
 @Getter
 public enum CleaningStyle {
     FIXED_PER_ROOM(0),
-    WEELY_ROTATION(1),
+    WEEKLY_ROTATION(1),
     TASK_AMOUNT(2);
 
     private final int value;

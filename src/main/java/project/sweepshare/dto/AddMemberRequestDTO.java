@@ -1,4 +1,10 @@
 package project.sweepshare.dto;
 
-public record AddMemberRequestDTO() {
-}
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public record AddMemberRequestDTO(
+   @NotBlank
+   @Email
+   String email
+) {}
