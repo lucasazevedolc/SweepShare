@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import project.sweepshare.dto.AddMemberRequestDTO;
 import project.sweepshare.dto.WgsRequestDTO;
 import project.sweepshare.dto.WgsResponseDTO;
-import project.sweepshare.service.RoomRotationService;
+import project.sweepshare.service.CleaningManagementService;
 import project.sweepshare.service.WgsService;
 
 import java.security.Principal;
@@ -19,7 +19,7 @@ import java.security.Principal;
 @Validated
 public class WgController {
     private final WgsService wgsService;
-    private final RoomRotationService roomRotationService;
+    private final CleaningManagementService cleaningManagementService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -51,6 +51,6 @@ public class WgController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void forceRoomRotation(@PathVariable Long id, Principal principal){
         String loggedUserEmail = principal.getName();
-        roomRotationService.forceRotation(id,loggedUserEmail);
+        cleaningManagementService.forceRotation(id,loggedUserEmail);
     }
 }

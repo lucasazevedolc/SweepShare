@@ -24,7 +24,7 @@ public class RoomsService {
     private final IUsersRepository usersRepository;
     private final IRoomsAssignmentsRepository assignmentsRepository;
     private final IRoomsMapper roomsMapper;
-    private final RoomRotationService roomRotationService;
+    private final CleaningManagementService cleaningManagementService;
 
     @Transactional
     public RoomsResponseDTO create(RoomsRequestDTO dto) {
@@ -56,7 +56,7 @@ public class RoomsService {
 
         assignmentsRepository.save(assignment);
 
-        roomRotationService.rotateSingleWg(room.getWg());
+        cleaningManagementService.rotateSingleWg(room.getWg());
 
         return roomsMapper.toResponseDTO(savedRoom);
 
