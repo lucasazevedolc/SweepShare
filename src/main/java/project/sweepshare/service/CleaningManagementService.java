@@ -2,7 +2,6 @@ package project.sweepshare.service;
 
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.sweepshare.database.model.*;
@@ -70,6 +69,7 @@ public class CleaningManagementService {
 
             int memberIndex = (startingIndex + i) % members.size();
             assignment.setUser(members.get(memberIndex));
+            assignment.setIsCompleted(false);
         }
 
         roomAssignmentsRepository.saveAll(assignments);
@@ -77,7 +77,6 @@ public class CleaningManagementService {
 
     @Transactional
     public void forceRotation(Long wgId, String userEmail){
-        String  email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity  user = usersRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -131,11 +130,12 @@ public class CleaningManagementService {
                     .getKey();
 
             TasksAssignmentsEntity assignment = taskAssignmentsRepository.findByTaskId(task.getId())
-                    .orElse(TasksAssignmentsEntity.builder()
+                    .orElseGet(() -> TasksAssignmentsEntity.builder()
                             .task(task)
                             .build());
 
             assignment.setUser(leastBurdenedUser);
+            assignment.setIsCompleted(false);
             updatedAssignments.add(assignment);
 
             int currentLoad = userWorkloadMap.get(leastBurdenedUser);
@@ -143,6 +143,32 @@ public class CleaningManagementService {
         }
 
         taskAssignmentsRepository.saveAll(updatedAssignments);
+    }
+
+    @Transactional
+    public void completeRoomAssignment(Long id,String email){
+        RoomsAssignmentsEntity assignment = roomAssignmentsRepository.findById(id)
+                .orElseThrow(()-> new RuntimeException("Room assignment not found"));
+
+        if(assignment.getUser() == null || !assignment.getUser().getEmail().equals(email)){
+            throw new RuntimeException("You don't have permission to do this");
+        }
+
+        assignment.setIsCompleted(true);
+        roomAssignmentsRepository.save(assignment);
+    }
+
+    @Transactional
+    public void completeTaskAssignment(Long id,String email){
+        TasksAssignmentsEntity assignment = taskAssignmentsRepository.findById(id)
+                .orElseThrow(()-> new RuntimeException("Task assignment not found"));
+
+        if(assignment.getUser() == null || !assignment.getUser().getEmail().equals(email)){
+            throw new RuntimeException("You don't have permission to do this");
+        }
+
+        assignment.setIsCompleted(true);
+        taskAssignmentsRepository.save(assignment);
     }
 
 }

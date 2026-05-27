@@ -17,6 +17,9 @@ public class RoomsAssignmentsEntity {
     @Column
     private Long id;
 
+    @Column(name = "is_completed", nullable = false)
+    private Boolean isCompleted = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name ="room_id",nullable = false)
     private RoomsEntity room;

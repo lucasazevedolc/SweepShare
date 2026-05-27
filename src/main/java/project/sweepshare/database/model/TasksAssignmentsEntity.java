@@ -17,6 +17,9 @@ public class TasksAssignmentsEntity {
     @Column
     private Long id;
 
+    @Column(name = "is_completed", nullable = false)
+    private Boolean isCompleted = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="task_id", nullable = false)
     private TasksEntity task;

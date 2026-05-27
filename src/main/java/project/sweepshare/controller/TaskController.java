@@ -6,8 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import project.sweepshare.dto.TasksRequestDTO;
 import project.sweepshare.dto.TasksResponseDTO;
+import project.sweepshare.service.CleaningManagementService;
 import project.sweepshare.service.TasksService;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -15,6 +17,7 @@ import java.util.List;
 @RequestMapping("/v1/tasks")
 public class TaskController {
     private final TasksService tasksService;
+    private final CleaningManagementService cleaningManagementService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -38,6 +41,13 @@ public class TaskController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTask(@PathVariable Long id) {
         tasksService.deleteTask(id);
+    }
+
+    @PatchMapping("/assignments/{id}/complete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void completeTaskAssignment(@PathVariable Long id, Principal principal) {
+        String loggedUserEmail = principal.getName();
+        cleaningManagementService.completeTaskAssignment(id, loggedUserEmail);
     }
 
 }
