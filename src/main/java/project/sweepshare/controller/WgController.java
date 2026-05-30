@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import project.sweepshare.dto.AddMemberRequestDTO;
+import project.sweepshare.dto.WgCleaningStatusResponseDTO;
 import project.sweepshare.dto.WgsRequestDTO;
 import project.sweepshare.dto.WgsResponseDTO;
 import project.sweepshare.service.CleaningManagementService;
@@ -52,5 +53,11 @@ public class WgController {
     public void forceRoomRotation(@PathVariable Long id, Principal principal){
         String loggedUserEmail = principal.getName();
         cleaningManagementService.forceRotation(id,loggedUserEmail);
+    }
+
+    @GetMapping("/{id}/cleaning-status")
+    @ResponseStatus(HttpStatus.OK)
+    public WgCleaningStatusResponseDTO cleaningStatus(@PathVariable Long id){
+        return cleaningManagementService.getWgCleaningStatus(id);
     }
 }

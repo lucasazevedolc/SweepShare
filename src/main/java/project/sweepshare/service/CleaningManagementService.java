@@ -2,12 +2,17 @@ package project.sweepshare.service;
 
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.sweepshare.database.model.*;
 import project.sweepshare.database.repository.*;
+import project.sweepshare.dto.RoomOverviewDTO;
+import project.sweepshare.dto.TaskStatusDTO;
+import project.sweepshare.dto.WgCleaningStatusResponseDTO;
 import project.sweepshare.enums.CleaningStyle;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -18,6 +23,8 @@ public class CleaningManagementService {
     private final IRoomsAssignmentsRepository roomAssignmentsRepository;
     private final ITasksRepository tasksRepository;
     private final ITasksAssignmentsRepository taskAssignmentsRepository;
+    private final ICleaningHistoryRepository cleaningHistoryRepository;
+    private final IRoomsRepository roomsRepository;
 
     @Transactional
     public void executeAllCleaningStrategies() {
@@ -79,6 +86,10 @@ public class CleaningManagementService {
     public void forceRotation(Long wgId, String userEmail){
         UsersEntity  user = usersRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if(user.getWg().getCleaningStyle() == CleaningStyle.FIXED_PER_ROOM.ordinal()){
+            throw new RuntimeException("There's no rotation for this WG");
+        }
 
         if(user.getWg() == null){
             throw new RuntimeException("You do not belong to a WG");
@@ -154,8 +165,21 @@ public class CleaningManagementService {
             throw new RuntimeException("You don't have permission to do this");
         }
 
-        assignment.setIsCompleted(true);
-        roomAssignmentsRepository.save(assignment);
+        if(!assignment.getIsCompleted()){
+            assignment.setIsCompleted(true);
+            roomAssignmentsRepository.save(assignment);
+
+            CleaningHistoryEntity history = CleaningHistoryEntity.builder()
+                    .wg(assignment.getRoom().getWg())
+                    .user(assignment.getUser())
+                    .room(assignment.getRoom())
+                    .task(null)
+                    .cleanedAt(LocalDateTime.now())
+                    .wasCompleted(true)
+                    .build();
+
+            cleaningHistoryRepository.save(history);
+        }
     }
 
     @Transactional
@@ -167,8 +191,135 @@ public class CleaningManagementService {
             throw new RuntimeException("You don't have permission to do this");
         }
 
-        assignment.setIsCompleted(true);
-        taskAssignmentsRepository.save(assignment);
+        if(!assignment.getIsCompleted()) {
+            assignment.setIsCompleted(true);
+            taskAssignmentsRepository.save(assignment);
+
+            CleaningHistoryEntity history = CleaningHistoryEntity.builder()
+                    .wg(assignment.getTask().getRoom().getWg())
+                    .user(assignment.getUser())
+                    .room(assignment.getTask().getRoom())
+                    .task(assignment.getTask())
+                    .cleanedAt(LocalDateTime.now())
+                    .wasCompleted(true)
+                    .build();
+
+            cleaningHistoryRepository.save(history);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public WgCleaningStatusResponseDTO getWgCleaningStatus(Long wgId){
+        WgsEntity wg = wgsRepository.findById(wgId)
+                .orElseThrow(()-> new RuntimeException("Wg not found"));
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UsersEntity user = usersRepository.findByEmail(email)
+                .orElseThrow(()-> new RuntimeException("User not found"));
+
+        if(user.getWg() == null){
+            throw new RuntimeException("User doesn't belong to a WG");
+        }
+
+        if(!(user.getWg().getId()).equals(wg.getId())){
+            throw new RuntimeException("You don't have  permission to do this");
+        }
+
+        List<RoomsEntity> rooms = roomsRepository.findByWgId(wg.getId());
+
+        List<CleaningHistoryEntity> historyList = cleaningHistoryRepository.findByWgId(wg.getId());
+
+        List<RoomOverviewDTO> roomsOverview = new ArrayList<>();
+
+        for(RoomsEntity room : rooms){
+            CleaningHistoryEntity lastSuccessClean = historyList.stream()
+                    .filter(h -> h.getRoom().getId().equals(room.getId())
+                            && Boolean.TRUE.equals(h.getWasCompleted()))
+                    .max(Comparator.comparing(CleaningHistoryEntity::getCleanedAt))
+                    .orElse(null);
+
+            LocalDateTime lastTime = lastSuccessClean != null ? lastSuccessClean.getCleanedAt() : null;
+            String lastUser = lastSuccessClean != null ? lastSuccessClean.getUser().getName() : "Never cleaned";
+
+            String currentResponsible = "No one assigned";
+            Boolean isRoomDone = false;
+            List<TaskStatusDTO> taskStatusList = new ArrayList<>();
+
+            if(wg.getCleaningStyle() == CleaningStyle.WEEKLY_ROTATION.ordinal()
+                    || wg.getCleaningStyle() == CleaningStyle.FIXED_PER_ROOM.ordinal()){
+
+                RoomsAssignmentsEntity assignment = roomAssignmentsRepository.findByRoomWgId(wg.getId()).stream()
+                        .filter(a -> a.getRoom().getId().equals(room.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if(assignment != null && assignment.getUser() != null){
+                    currentResponsible = assignment.getUser().getName();
+                    isRoomDone = assignment.getIsCompleted();
+                }
+            }
+
+            else{
+                List<TasksEntity> roomTasks = tasksRepository.findTasksWithRoomsByWgId(wg.getId()).stream()
+                        .filter(t -> t.getRoom() != null && t.getRoom().getId().equals(room.getId()))
+                        .toList();
+
+                boolean allTasksDone = !roomTasks.isEmpty();
+                Set<String> uniqueNames = new HashSet<>();
+
+                for(TasksEntity task : roomTasks){
+                    TasksAssignmentsEntity assignment = taskAssignmentsRepository.findByTaskId(task.getId())
+                            .orElse(null);
+
+                    Boolean taskDone = false;
+                    if(assignment != null && assignment.getUser() != null){
+                        uniqueNames.add(assignment.getUser().getName());
+                        taskDone = assignment.getIsCompleted();
+                    }
+
+                    if(!Boolean.TRUE.equals(taskDone)){
+                        allTasksDone = false;
+                    }
+
+                    taskStatusList.add(new TaskStatusDTO(
+                            task.getId(),
+                            task.getName(),
+                            task.getLevel(),
+                            taskDone
+                    ));
+
+                    currentResponsible = String.join(", ", uniqueNames);
+                    if(currentResponsible.isEmpty()) currentResponsible = "No one assigned";
+                    isRoomDone = allTasksDone;
+
+                }
+            }
+
+            roomsOverview.add(new RoomOverviewDTO(
+                    room.getId(),
+                    room.getName(),
+                    currentResponsible,
+                    isRoomDone,
+                    lastTime,
+                    lastUser,
+                    taskStatusList
+            ));
+        }
+
+        String cleaningStyle = "UNKNOWN";
+        if (wg.getCleaningStyle() == CleaningStyle.FIXED_PER_ROOM.ordinal()) {
+            cleaningStyle = "FIXED_MEMBER";
+        } else if (wg.getCleaningStyle() == CleaningStyle.WEEKLY_ROTATION.ordinal()) {
+            cleaningStyle = "WEEKLY_ROTATION";
+        } else if (wg.getCleaningStyle() == CleaningStyle.TASK_AMOUNT.ordinal()) {
+            cleaningStyle = "TASK_AMOUNT";
+        }
+
+        return new WgCleaningStatusResponseDTO(
+                wg.getId(),
+                cleaningStyle,
+                roomsOverview
+        );
     }
 
 }
