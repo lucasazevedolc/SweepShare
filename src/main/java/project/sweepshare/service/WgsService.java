@@ -11,9 +11,10 @@ import project.sweepshare.database.repository.IWgsRepository;
 import project.sweepshare.dto.AddMemberRequestDTO;
 import project.sweepshare.dto.WgsRequestDTO;
 import project.sweepshare.dto.WgsResponseDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.DataConflictException;
+import project.sweepshare.exception.ResourceNotFoundException;
 import project.sweepshare.mapper.IWgsMapper;
-
-import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -26,10 +27,10 @@ public class WgsService {
     public WgsResponseDTO create(WgsRequestDTO dto) {
         String  email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() != null){
-            throw new RuntimeException("You already have a WG");
+            throw new DataConflictException("You already have a WG");
         }
 
         WgsEntity wg = WgsEntity.builder()
@@ -52,12 +53,12 @@ public class WgsService {
     public WgsResponseDTO update(Long id, WgsRequestDTO dto) {
         String  email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity  user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         WgsEntity wg = wgsRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("WG not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("WG not found"));
 
         if(user.getWg() == null || !user.getWg().getId().equals(id)) {
-            throw new  RuntimeException("You don't have permission to update this resource");
+            throw new AccessDeniedException("You don't have permission to update this resource");
         }
 
         if(dto.name() != null && !dto.name().isBlank()) {
@@ -77,10 +78,10 @@ public class WgsService {
     public void leaveWg(Long id) {
         String  email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity  user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() == null || !user.getWg().getId().equals(id)) {
-            throw new  RuntimeException("You don't have permission to update this resource");
+            throw new AccessDeniedException("You don't have permission to update this resource");
         }
 
         WgsEntity wg = user.getWg();
@@ -97,18 +98,18 @@ public class WgsService {
     public void addMemberByEmail(String creatorEmail, AddMemberRequestDTO dto){
         String  email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity  creator = usersRepository.findByEmail(creatorEmail)
-                .orElseThrow(() -> new RuntimeException("Not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Not found"));
 
         WgsEntity wg = creator.getWg();
         if (wg == null) {
-            throw new RuntimeException("You must belong to a WG to invite other members");
+            throw new AccessDeniedException("You must belong to a WG to invite other members");
         }
 
         UsersEntity targetUser = usersRepository.findByEmail(dto.email())
-                .orElseThrow(() -> new RuntimeException("No user found with the provided email"));
+                .orElseThrow(() -> new ResourceNotFoundException("No user found with the provided email"));
 
         if (targetUser.getWg() != null) {
-            throw new RuntimeException("The user is already a member of a WG");
+            throw new DataConflictException("The user is already a member of a WG");
         }
 
         targetUser.setWg(wg);

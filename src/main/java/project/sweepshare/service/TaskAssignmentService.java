@@ -12,6 +12,10 @@ import project.sweepshare.database.repository.ITasksRepository;
 import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.TaskAssignmentRequestDTO;
 import project.sweepshare.dto.TaskAssignmentResponseDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.BadRequestException;
+import project.sweepshare.exception.DataConflictException;
+import project.sweepshare.exception.ResourceNotFoundException;
 import project.sweepshare.mapper.ITaskAssignmentsMapper;
 
 import java.util.List;
@@ -30,24 +34,24 @@ public class TaskAssignmentService {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         TasksEntity task = tasksRepository.findById(dto.taskId())
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
 
         UsersEntity targetUser = usersRepository.findById(dto.userId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Long userWgId = user.getWg().getId() != null ? user.getWg().getId() : null;
         Long taskWgId = task.getRoom().getWg().getId() != null ? task.getRoom().getWg().getId() : null;
         Long targetWgId =  targetUser.getWg().getId() != null ? targetUser.getWg().getId() : null;
 
         if(userWgId == null || !userWgId.equals(taskWgId) || !userWgId.equals(targetWgId)){
-            throw new RuntimeException("Access denied");
+            throw new AccessDeniedException("Access denied");
         }
 
         if(assignmentsRepository.existsByTaskId(dto.taskId())) {
-            throw new RuntimeException("Task already assigned");
+            throw new DataConflictException("Task already assigned");
         }
 
         TasksAssignmentsEntity assignment = TasksAssignmentsEntity.builder()
@@ -63,10 +67,10 @@ public class TaskAssignmentService {
     public List<TaskAssignmentResponseDTO> getMyWgTaskScale() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if(user.getWg().getId() == null){
-            throw new RuntimeException("User does not belong to a WG");
+            throw new AccessDeniedException("User does not belong to a WG");
         }
 
         List<TasksAssignmentsEntity> assignments = assignmentsRepository.findByTaskRoomWgId(user.getWg().getId());
@@ -77,13 +81,13 @@ public class TaskAssignmentService {
     public void removeAssignment(Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         TasksAssignmentsEntity assignment = assignmentsRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Assignment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
 
         if(user.getWg() == null){
-            throw new RuntimeException("Access denied");
+            throw new AccessDeniedException("Access denied");
         }
 
         assignmentsRepository.delete(assignment);

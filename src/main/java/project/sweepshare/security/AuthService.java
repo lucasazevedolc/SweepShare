@@ -6,7 +6,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.sweepshare.database.model.UsersEntity;
@@ -14,6 +13,8 @@ import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.LoginRequestDTO;
 import project.sweepshare.dto.LoginResponseDTO;
 import project.sweepshare.dto.RefreshTokenRequestDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.ResourceNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class AuthService {
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
         UsersEntity user = usersRepository.findByEmail(dto.email())
-                .orElseThrow(()-> new UsernameNotFoundException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         user.setRefreshToken(refreshToken);
         usersRepository.save(user);
@@ -49,14 +50,14 @@ public class AuthService {
         UserDetails userDetails =  userDetailsService.loadUserByUsername(email);
 
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new UsernameNotFoundException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if(!jwtService.isRefreshTokenValid(dto.refreshToken(), userDetails)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new AccessDeniedException("Invalid refresh token");
         }
 
         if(user.getRefreshToken() == null || !user.getRefreshToken().equals(dto.refreshToken())) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new AccessDeniedException("Invalid refresh token");
         }
 
         String newToken = jwtService.generateToken(userDetails);
@@ -73,7 +74,7 @@ public class AuthService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new UsernameNotFoundException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         user.setRefreshToken(null);
         usersRepository.save(user);

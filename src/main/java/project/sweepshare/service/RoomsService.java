@@ -12,6 +12,10 @@ import project.sweepshare.database.repository.IRoomsRepository;
 import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.RoomsRequestDTO;
 import project.sweepshare.dto.RoomsResponseDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.BadRequestException;
+import project.sweepshare.exception.DataConflictException;
+import project.sweepshare.exception.ResourceNotFoundException;
 import project.sweepshare.mapper.IRoomsMapper;
 
 import java.util.List;
@@ -30,14 +34,14 @@ public class RoomsService {
     public RoomsResponseDTO create(RoomsRequestDTO dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() == null){
-            throw new RuntimeException("You are not part of a WG");
+            throw new AccessDeniedException("You are not part of a WG");
         }
 
         if (roomsRepository.existsByNameIgnoreCaseAndWgId(dto.name(), user.getWg().getId())) {
-            throw new RuntimeException("Room already exists");
+            throw new DataConflictException("Room already exists");
         }
 
         RoomsEntity room = roomsMapper.toEntity(dto);
@@ -66,10 +70,10 @@ public class RoomsService {
     public List<RoomsResponseDTO> findAllFromMyWg(){
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() == null){
-            throw new RuntimeException("You are not part of a WG");
+            throw new AccessDeniedException("You are not part of a WG");
         }
 
         List<RoomsEntity> rooms = roomsRepository.findByWgId(user.getWg().getId());
@@ -81,14 +85,14 @@ public class RoomsService {
     public RoomsResponseDTO update(RoomsRequestDTO dto, Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() == null){
-            throw new RuntimeException("You are not part of a WG");
+            throw new AccessDeniedException("You are not part of a WG");
         }
 
         RoomsEntity room = roomsRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Room not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Room not found"));
 
         if(dto.name() != null && !dto.name().isBlank()){
             room.setName(dto.name());
@@ -106,13 +110,13 @@ public class RoomsService {
     public void delete(Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         RoomsEntity room = roomsRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Room not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Room not found"));
 
         if(user.getWg() == null || !user.getWg().getId().equals(room.getWg().getId())){
-            throw new RuntimeException("You don't have permission to delete this room");
+            throw new AccessDeniedException("You don't have permission to delete this room");
         }
 
         roomsRepository.delete(room);

@@ -9,10 +9,10 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import project.sweepshare.database.repository.IUsersRepository;
+import project.sweepshare.exception.ResourceNotFoundException;
 
 @Configuration
 @RequiredArgsConstructor
@@ -24,7 +24,7 @@ public class ApplicationConfig {
     public UserDetailsService userDetailsService() {
         return username -> {
             UserDetails user = usersRepository.findByEmail(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             return user;
         };
     }

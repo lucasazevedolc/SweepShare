@@ -12,6 +12,10 @@ import project.sweepshare.database.repository.IRoomsRepository;
 import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.RoomsAssignmentRequestDTO;
 import project.sweepshare.dto.RoomsAssignmentResponseDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.BadRequestException;
+import project.sweepshare.exception.DataConflictException;
+import project.sweepshare.exception.ResourceNotFoundException;
 import project.sweepshare.mapper.IRoomsAssignmentsMapper;
 
 import java.util.List;
@@ -29,24 +33,24 @@ public class RoomsAssignmentsService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         RoomsEntity room = roomsRepository.findById(dto.roomId())
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         UsersEntity targetUser = usersRepository.findById(dto.userId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Long userWgId = user.getWg().getId() != null ? user.getWg().getId() : null;
         Long roomWgId = room.getWg().getId() != null ? room.getWg().getId() : null;
         Long targetWgId = targetUser.getWg().getId() != null ? targetUser.getWg().getId() : null;
 
         if (userWgId == null || !userWgId.equals(roomWgId) || !userWgId.equals(targetWgId)) {
-            throw new RuntimeException("Access denied");
+            throw new AccessDeniedException("Access denied");
         }
 
         if (assignmentsRepository.existsByRoomId(dto.roomId())) {
-            throw new RuntimeException("This room is already assigned");
+            throw new DataConflictException("This room is already assigned");
         }
 
         RoomsAssignmentsEntity assignment = RoomsAssignmentsEntity.builder()
@@ -64,10 +68,10 @@ public class RoomsAssignmentsService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() == null){
-            throw new RuntimeException("You are not part of a WG");
+            throw new AccessDeniedException("You are not part of a WG");
         }
 
         List<RoomsAssignmentsEntity> assignments = assignmentsRepository.findByRoomWgId(user.getWg().getId());
@@ -79,13 +83,13 @@ public class RoomsAssignmentsService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         RoomsAssignmentsEntity assignment = assignmentsRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("WG assignment not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("WG assignment not found"));
 
         if(user.getWg() == null || !assignment.getRoom().getWg().getId().equals(user.getWg().getId())){
-            throw new RuntimeException("You don't have permission to remove this assignment");
+            throw new AccessDeniedException("You don't have permission to remove this assignment");
         }
 
         assignmentsRepository.delete(assignment);

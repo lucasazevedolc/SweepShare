@@ -11,6 +11,9 @@ import project.sweepshare.dto.RoomOverviewDTO;
 import project.sweepshare.dto.TaskStatusDTO;
 import project.sweepshare.dto.WgCleaningStatusResponseDTO;
 import project.sweepshare.enums.CleaningStyle;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.IllegalWgStateException;
+import project.sweepshare.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -85,22 +88,22 @@ public class CleaningManagementService {
     @Transactional
     public void forceRotation(Long wgId, String userEmail){
         UsersEntity  user = usersRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if(user.getWg().getCleaningStyle() == CleaningStyle.FIXED_PER_ROOM.ordinal()){
-            throw new RuntimeException("There's no rotation for this WG");
+            throw new ResourceNotFoundException("There's no rotation for this WG");
         }
 
-        if(user.getWg() == null){
-            throw new RuntimeException("You do not belong to a WG");
+        if(user.getWg().getId() == null){
+            throw new AccessDeniedException("You do not belong to a WG");
         }
 
         if(!user.getWg().getId().equals(wgId)){
-            throw new RuntimeException("You don't have permission to do this");
+            throw new AccessDeniedException("You don't have permission to do this");
         }
 
         WgsEntity wg = wgsRepository.findById(wgId)
-                .orElseThrow(() -> new RuntimeException("WG not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("WG not found"));
 
         if(wg.getCleaningStyle() == CleaningStyle.WEEKLY_ROTATION.ordinal()){
             rotateSingleWg(wg);
@@ -137,7 +140,7 @@ public class CleaningManagementService {
         for(TasksEntity task : tasks){
             UsersEntity leastBurdenedUser = userWorkloadMap.entrySet().stream()
                     .min(Map.Entry.comparingByValue())
-                    .orElseThrow(()-> new RuntimeException("Failed to evaluate member workload"))
+                    .orElseThrow(()-> new IllegalWgStateException("Failed to evaluate member workload"))
                     .getKey();
 
             TasksAssignmentsEntity assignment = taskAssignmentsRepository.findByTaskId(task.getId())
@@ -159,10 +162,10 @@ public class CleaningManagementService {
     @Transactional
     public void completeRoomAssignment(Long id,String email){
         RoomsAssignmentsEntity assignment = roomAssignmentsRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Room assignment not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Room assignment not found"));
 
         if(assignment.getUser() == null || !assignment.getUser().getEmail().equals(email)){
-            throw new RuntimeException("You don't have permission to do this");
+            throw new AccessDeniedException("You don't have permission to do this");
         }
 
         if(!assignment.getIsCompleted()){
@@ -185,10 +188,10 @@ public class CleaningManagementService {
     @Transactional
     public void completeTaskAssignment(Long id,String email){
         TasksAssignmentsEntity assignment = taskAssignmentsRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Task assignment not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Task assignment not found"));
 
         if(assignment.getUser() == null || !assignment.getUser().getEmail().equals(email)){
-            throw new RuntimeException("You don't have permission to do this");
+            throw new AccessDeniedException("You don't have permission to do this");
         }
 
         if(!assignment.getIsCompleted()) {
@@ -211,18 +214,18 @@ public class CleaningManagementService {
     @Transactional(readOnly = true)
     public WgCleaningStatusResponseDTO getWgCleaningStatus(Long wgId){
         WgsEntity wg = wgsRepository.findById(wgId)
-                .orElseThrow(()-> new RuntimeException("Wg not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Wg not found"));
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if(user.getWg() == null){
-            throw new RuntimeException("User doesn't belong to a WG");
+            throw new AccessDeniedException("User doesn't belong to a WG");
         }
 
         if(!(user.getWg().getId()).equals(wg.getId())){
-            throw new RuntimeException("You don't have  permission to do this");
+            throw new AccessDeniedException("You don't have  permission to do this");
         }
 
         List<RoomsEntity> rooms = roomsRepository.findByWgId(wg.getId());

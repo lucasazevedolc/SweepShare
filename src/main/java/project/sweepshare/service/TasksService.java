@@ -12,6 +12,10 @@ import project.sweepshare.database.repository.ITasksRepository;
 import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.TasksRequestDTO;
 import project.sweepshare.dto.TasksResponseDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.BadRequestException;
+import project.sweepshare.exception.DataConflictException;
+import project.sweepshare.exception.ResourceNotFoundException;
 import project.sweepshare.mapper.ITasksMapper;
 
 import java.util.List;
@@ -29,17 +33,17 @@ public class TasksService {
     public TasksResponseDTO createTask(TasksRequestDTO dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         RoomsEntity room = roomsRepository.findById(dto.roomId())
-                .orElseThrow(()-> new RuntimeException("Room not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Room not found"));
 
         if (user.getWg() == null || !room.getWg().getId().equals(user.getWg().getId())) {
-            throw new RuntimeException("User not authorized to perform this action");
+            throw new AccessDeniedException("User not authorized to perform this action");
         }
 
         if (tasksRepository.existsByNameIgnoreCaseAndRoomId(dto.name(), dto.roomId())) {
-            throw new RuntimeException("Task already exists in this room");
+            throw new DataConflictException("Task already exists in this room");
         }
 
         TasksEntity taskEntity = tasksMapper.toEntity(dto);
@@ -59,22 +63,22 @@ public class TasksService {
     public TasksResponseDTO updateTask(TasksRequestDTO dto, Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         RoomsEntity room = roomsRepository.findById(dto.roomId())
-                .orElseThrow(()-> new RuntimeException("Room not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Room not found"));
 
         TasksEntity task = tasksRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Task not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Task not found"));
 
         if (user.getWg() == null || !room.getWg().getId().equals(user.getWg().getId())) {
-            throw new RuntimeException("User not authorized to perform this action");
+            throw new AccessDeniedException("User not authorized to perform this action");
         }
 
         if(dto.name() != null && !dto.name().isBlank()) {
             if (!task.getName().equalsIgnoreCase(dto.name()) &&
                     tasksRepository.existsByNameIgnoreCaseAndRoomId(dto.name(), task.getRoom().getId())) {
-                throw new RuntimeException("Task already exists in this room");
+                throw new DataConflictException("Task already exists in this room");
             }
             task.setName(dto.name());
         }
@@ -91,13 +95,13 @@ public class TasksService {
     public void deleteTask(Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         TasksEntity task = tasksRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Task not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Task not found"));
 
         if(user.getWg() == null || !task.getRoom().getWg().getId().equals(user.getWg().getId())) {
-            throw new RuntimeException("User not authorized to perform this action");
+            throw new AccessDeniedException("User not authorized to perform this action");
         }
 
         tasksRepository.delete(task);

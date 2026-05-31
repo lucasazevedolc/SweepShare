@@ -1,11 +1,11 @@
 package project.sweepshare.service;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.BadRequestException;
+
+
 import org.springframework.data.crossstore.ChangeSetPersister;
-import org.springframework.security.access.AccessDeniedException;
+
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import project.sweepshare.database.model.UsersEntity;
@@ -13,6 +13,9 @@ import project.sweepshare.database.repository.IUsersRepository;
 import project.sweepshare.dto.UpdatePasswordDTO;
 import project.sweepshare.dto.UsersRequestDTO;
 import project.sweepshare.dto.UsersResponseDTO;
+import project.sweepshare.exception.AccessDeniedException;
+import project.sweepshare.exception.BadRequestException;
+import project.sweepshare.exception.ResourceNotFoundException;
 import project.sweepshare.mapper.IUsersMapper;
 
 import java.util.ArrayList;
@@ -45,14 +48,14 @@ public class UserService {
 
     public UsersResponseDTO getUserById(Long userId) throws ChangeSetPersister.NotFoundException {
         UsersEntity user = usersRepository.findById(userId)
-                .orElseThrow(ChangeSetPersister.NotFoundException::new);
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         return usersMapper.toResponseDTO(user);
     }
 
     public UsersResponseDTO updateUser(Long userId, UsersRequestDTO requestDTO) throws ChangeSetPersister.NotFoundException {
         UsersEntity user = usersRepository.findById(userId)
-                .orElseThrow(ChangeSetPersister.NotFoundException::new);
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         usersMapper.updateEntityFromDto(requestDTO, user);
 
@@ -63,14 +66,14 @@ public class UserService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(()-> new UsernameNotFoundException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         return usersMapper.toResponseDTO(user);
     }
 
     public void updatePassword(Long id, UpdatePasswordDTO dto){
         UsersEntity user =  usersRepository.findById(id)
-                .orElseThrow(()-> new UsernameNotFoundException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         String loggedData = SecurityContextHolder.getContext().getAuthentication().getName();
         if(!user.getEmail().equals(loggedData)){
@@ -78,11 +81,11 @@ public class UserService {
         }
 
         if(!dto.newPassword().equals(dto.confirmPassword())){
-            throw new IllegalArgumentException("The passwords do not match");
+            throw new BadRequestException("The passwords do not match");
         }
 
         if(!passwordEncoder.matches(dto.oldPassword(),user.getPassword())){
-            throw new IllegalArgumentException("Your current password is incorrect");
+            throw new BadRequestException("Your current password is incorrect");
         }
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
@@ -111,12 +114,12 @@ public class UserService {
         }
         catch (NumberFormatException e) {}
 
-        throw new UsernameNotFoundException("User not found");
+        throw new ResourceNotFoundException("User not found");
     }
 
     public void deactivateUser(Long id){
         UsersEntity user = usersRepository.findById(id)
-                .orElseThrow(()-> new UsernameNotFoundException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         String loggedData = SecurityContextHolder.getContext().getAuthentication().getName();
 
