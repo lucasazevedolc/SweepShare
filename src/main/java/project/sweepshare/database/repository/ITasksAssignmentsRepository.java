@@ -1,6 +1,7 @@
 package project.sweepshare.database.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import project.sweepshare.database.model.RoomsAssignmentsEntity;
 import project.sweepshare.database.model.TasksAssignmentsEntity;
 
 import java.util.List;
@@ -12,4 +13,6 @@ public interface ITasksAssignmentsRepository extends JpaRepository<TasksAssignme
     boolean existsByTaskId(Long taskId);
 
     Optional <TasksAssignmentsEntity> findByTaskId(Long id);
+
+    List<TasksAssignmentsEntity> findByIsCompletedFalse();
 }

@@ -2,9 +2,7 @@ package project.sweepshare.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister;
-import org.springframework.data.repository.cdi.Eager;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import project.sweepshare.dto.UpdatePasswordDTO;
@@ -50,7 +48,7 @@ public class UserController {
 
     @PutMapping("/{userId}")
     @ResponseStatus(HttpStatus.OK)
-    public void updateUser(@PathVariable Long userId, @Validated @RequestBody UsersRequestDTO requestDTO) throws ChangeSetPersister.NotFoundException {
+    public void updateUser(@PathVariable Long userId, @RequestBody UsersRequestDTO requestDTO) throws ChangeSetPersister.NotFoundException {
         userService.updateUser(userId, requestDTO);
     }
 

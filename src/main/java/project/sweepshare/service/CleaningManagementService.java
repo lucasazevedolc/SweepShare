@@ -17,6 +17,7 @@ import project.sweepshare.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class CleaningManagementService {
     private final ITasksAssignmentsRepository taskAssignmentsRepository;
     private final ICleaningHistoryRepository cleaningHistoryRepository;
     private final IRoomsRepository roomsRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public void executeAllCleaningStrategies() {
@@ -83,6 +85,23 @@ public class CleaningManagementService {
         }
 
         roomAssignmentsRepository.saveAll(assignments);
+
+        Map<UsersEntity, List<RoomsAssignmentsEntity>> assignmentsByUser = assignments.stream()
+                .filter(assignment -> assignment.getUser() != null && assignment.getRoom() != null)
+                .collect(Collectors.groupingBy(RoomsAssignmentsEntity::getUser));
+
+        assignmentsByUser.forEach((user, userAssignments) -> {
+            List<String> roomNames = userAssignments.stream()
+                    .map(assignment -> assignment.getRoom().getName())
+                    .collect(Collectors.toList());
+
+            notificationService.sendNewRoomScheduleEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    roomNames
+            );
+        });
+
     }
 
     @Transactional
@@ -157,6 +176,23 @@ public class CleaningManagementService {
         }
 
         taskAssignmentsRepository.saveAll(updatedAssignments);
+
+        Map<UsersEntity, List<TasksAssignmentsEntity>> assignmentsByUser = updatedAssignments.stream()
+                .filter(assignment -> assignment.getUser() != null && assignment.getTask() != null)
+                .collect(Collectors.groupingBy(TasksAssignmentsEntity::getUser));
+
+        assignmentsByUser.forEach((user, userAssignments) -> {
+            List<String> taskNames = userAssignments.stream()
+                    .map(assignment -> assignment.getTask().getName())
+                    .collect(Collectors.toList());
+
+            notificationService.sendNewTaskScheduleEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    taskNames
+            );
+        });
+
     }
 
     @Transactional

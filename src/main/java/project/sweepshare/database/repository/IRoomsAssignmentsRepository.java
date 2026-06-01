@@ -10,4 +10,6 @@ public interface IRoomsAssignmentsRepository extends JpaRepository<RoomsAssignme
     List<RoomsAssignmentsEntity> findByRoomWgId(Long roomWgId);
 
     boolean existsByRoomId(Long id);
+
+    List<RoomsAssignmentsEntity> findByIsCompletedFalse();
 }

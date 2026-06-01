@@ -46,20 +46,37 @@ public class UserService {
         return responseDTOList;
     }
 
-    public UsersResponseDTO getUserById(Long userId) throws ChangeSetPersister.NotFoundException {
+    public UsersResponseDTO getUserById(Long userId) {
         UsersEntity user = usersRepository.findById(userId)
                 .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         return usersMapper.toResponseDTO(user);
     }
 
-    public UsersResponseDTO updateUser(Long userId, UsersRequestDTO requestDTO) throws ChangeSetPersister.NotFoundException {
+    public UsersResponseDTO updateUser(Long userId, UsersRequestDTO requestDTO) {
+        String  email = SecurityContextHolder.getContext().getAuthentication().getName();
+
         UsersEntity user = usersRepository.findById(userId)
-                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        usersMapper.updateEntityFromDto(requestDTO, user);
+        if(!user.getEmail().equals(email)) {
+            throw new AccessDeniedException("You don't have permission to do this");
+        }
 
-        return usersMapper.toResponseDTO(usersRepository.save(user));
+        if (requestDTO.name() != null && !requestDTO.name().isBlank()) {
+            user.setName(requestDTO.name());
+        }
+
+        if (requestDTO.email() != null && !requestDTO.email().isBlank()) {
+            user.setEmail(requestDTO.email());
+        }
+
+        if (requestDTO.birthday() != null) {
+            user.setBirthday(requestDTO.birthday());
+        }
+
+        UsersEntity updatedUser = usersRepository.save(user);
+        return usersMapper.toResponseDTO(updatedUser);
     }
 
     public UsersResponseDTO getCurrentUser(){
@@ -92,9 +109,9 @@ public class UserService {
         usersRepository.save(user);
     }
 
-    public UsersResponseDTO getUserByEmail(String email) throws ChangeSetPersister.NotFoundException {
+    public UsersResponseDTO getUserByEmail(String email) {
         UsersEntity user = usersRepository.findByEmail(email)
-                .orElseThrow(ChangeSetPersister.NotFoundException::new);
+                .orElseThrow(()-> new ResourceNotFoundException("Email not found"));
 
         return usersMapper.toResponseDTO(user);
     }
