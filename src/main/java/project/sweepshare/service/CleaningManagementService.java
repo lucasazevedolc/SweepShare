@@ -109,12 +109,16 @@ public class CleaningManagementService {
         UsersEntity  user = usersRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if(user.getWg().getCleaningStyle() == CleaningStyle.FIXED_PER_ROOM.ordinal()){
-            throw new ResourceNotFoundException("There's no rotation for this WG");
+        if(user.getWg() == null){
+            throw new AccessDeniedException("You do not belong to a WG");
         }
 
         if(user.getWg().getId() == null){
             throw new AccessDeniedException("You do not belong to a WG");
+        }
+
+        if(user.getWg().getCleaningStyle() == CleaningStyle.FIXED_PER_ROOM.ordinal()){
+            throw new ResourceNotFoundException("There's no rotation for this WG");
         }
 
         if(!user.getWg().getId().equals(wgId)){
