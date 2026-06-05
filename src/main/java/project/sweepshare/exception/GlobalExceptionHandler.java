@@ -46,13 +46,13 @@ public class GlobalExceptionHandler {
             Exception exception, HttpServletRequest request){
         ApiErrorResponse error = new ApiErrorResponse(
                 LocalDateTime.now(),
-                HttpStatus.UNPROCESSABLE_CONTENT.value(),
-                HttpStatus.UNPROCESSABLE_CONTENT.getReasonPhrase(),
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                HttpStatus.UNPROCESSABLE_ENTITY.getReasonPhrase(),
                 exception.getMessage(),
                 request.getRequestURI()
         );
 
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(error);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
     }
 
     @ExceptionHandler(BadRequestException.class)
@@ -66,7 +66,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
 
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(error);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
     }
 
     @ExceptionHandler(DataConflictException.class)
