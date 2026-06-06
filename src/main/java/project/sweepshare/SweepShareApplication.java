@@ -10,7 +10,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class SweepShareApplication {
 
 	public static void main(String[] args) {
-        Dotenv dotenv = Dotenv.configure().load();
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .ignoreIfMalformed()
+                .load();
+
         dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
 
 		SpringApplication.run(SweepShareApplication.class, args);
